@@ -3,10 +3,10 @@ import { ZodTypeAny, ZodError } from 'zod';
 import { ApiError } from '../utils/ApiError';
 
 export const validate =
-  (schema: ZodTypeAny) =>
+  (schema: ZodTypeAny, source: 'body' | 'query' | 'params' = 'body') =>
   async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     try {
-      req.body = await schema.parseAsync(req.body);
+      req[source] = await schema.parseAsync(req[source]);
       next();
     } catch (error) {
       if (error instanceof ZodError) {

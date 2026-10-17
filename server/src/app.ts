@@ -8,6 +8,9 @@ import authRoutes from './routes/auth.routes';
 import accountRoutes from './routes/account.routes';
 import categoryRoutes from './routes/category.routes';
 import transactionRoutes from './routes/transaction.routes';
+import budgetRoutes from './routes/budget.routes';
+import goalRoutes from './routes/goal.routes';
+import analyticsRoutes from './routes/analytics.routes';
 import { ApiError } from './utils/ApiError';
 
 const app = express();
@@ -67,6 +70,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use('/api/budgets', budgetRoutes);
+app.use('/api/goals', goalRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // 404 Handler
 app.use((_req: Request, res: Response) => {

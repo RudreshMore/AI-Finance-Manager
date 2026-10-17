@@ -11,6 +11,8 @@ import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { AccountsPage } from './pages/accounts/AccountsPage';
 import { CategoriesPage } from './pages/categories/CategoriesPage';
 import { TransactionsPage } from './pages/transactions/TransactionsPage';
+import { BudgetsPage } from './pages/budgets/BudgetsPage';
+import { GoalsPage } from './pages/goals/GoalsPage';
 import { 
   checkBackendHealth, 
   type HealthResponse 
@@ -340,7 +342,7 @@ function HealthOverview() {
 
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
-        AI Finance Manager &bull; Phase 3: Financial Core Verified &bull; Next: Phase 4 Budgets & Goals
+        AI Finance Manager &bull; Phase 4: Budgets, Goals & Analytics Verified &bull; Next: Phase 5 AI Assistant
       </footer>
     </div>
   );
@@ -386,6 +388,22 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <TransactionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/budgets"
+            element={
+              <ProtectedRoute>
+                <BudgetsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/goals"
+            element={
+              <ProtectedRoute>
+                <GoalsPage />
               </ProtectedRoute>
             }
           />

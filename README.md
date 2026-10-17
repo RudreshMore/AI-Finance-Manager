@@ -17,77 +17,75 @@ An enterprise-grade, full-stack personal finance management application with a s
 - [x] **Phase 1: Foundation & Architecture Setup** (Database schema, Prisma singleton, health check diagnostic)
 - [x] **Phase 2: Authentication, Security & Authorization Module** (Registration, 1-min OTP, JWT rotation, password reset, RBAC)
 - [x] **Phase 3: Financial Core — Accounts, Categories & Transactions** (Multi-account ledger, default/custom tagging, atomic balance updates, double-entry transfers, overdraft protection)
-- [ ] **Phase 4: Budgets, Savings Goals & Financial Analytics**
+- [x] **Phase 4: Budgets, Savings Goals & Financial Analytics** (Category budgets, savings milestones, cash flow analytics, Recharts dashboard)
 - [ ] **Phase 5: AI Financial Assistant**
 
 ---
 
-## Phase 3: Financial Core Module
+## Phase 4: Budgets, Savings Goals & Financial Analytics
 
-### Core Accounting & Integrity Principles
-1. **Decimal Precision**: Monetary values strictly stored as MySQL `DECIMAL(14, 2)` and manipulated with Prisma `Decimal` to eliminate binary floating-point rounding errors.
-2. **Indian Rupee (INR) Default**: Standard currency defaults to `INR` with currency formatting (`₹`).
-3. **Atomic Balance Updates**: Every income, expense, and transfer updates account balances within an isolated `prisma.$transaction`.
-4. **Double-Entry Transfers**: Inter-account fund transfers atomically deduct from the source account and credit the destination account, logging full transfer history.
-5. **Overdraft Protection**: Expense or transfer operations resulting in negative balances are rejected on regular accounts (`BANK`, `CASH`, `WALLET`, `SAVINGS`), while permitted on `CREDIT_CARD`.
-6. **Safe Deletion Locks**:
-   - Accounts with existing transactions cannot be deleted to maintain audit integrity.
-   - System categories are immutable; custom categories with linked transactions cannot be deleted.
-   - Deleting a transaction atomically reverses its financial impact on the account balance.
+### 1. Monthly Budget Management
+- **Category Scoping**: Budgets are strictly assigned to `EXPENSE` categories.
+- **Duplicate Prevention**: Database-level unique constraint `(userId, categoryId, month, year)` prevents duplicate budgets.
+- **Dynamic Real-Time Spending**: Actual spending is dynamically computed from user transactions within the month/year period. Refunds, edits, and deletions instantly reflect without stale cached values.
+- **Status Thresholds**:
+  - `ON_TRACK`: < 80% utilization
+  - `APPROACHING`: &ge; 80% and &le; 100% utilization
+  - `EXCEEDED`: > 100% utilization (displays overspent amount)
 
----
+### 2. Savings Goals
+- **Milestone Tracking**: Name, target amount, current saved amount, and optional target date.
+- **Rate Recommendation**: Calculates required monthly savings based on remaining months until target date.
+- **Status Automation**: `ACTIVE`, `COMPLETED` (&ge; 100% of target reached), or `OVERDUE` (target date elapsed).
+- **Strict Ledger Isolation**: Updating manual goal progress is completely separated from bank balances—never silently modifies user account balances.
 
-## Financial API Endpoints
-
-### Accounts (`/api/accounts`)
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/accounts` | List authenticated user's active accounts with balances. |
-| `POST` | `/api/accounts` | Create new account (`BANK`, `CASH`, `WALLET`, `CREDIT_CARD`, `SAVINGS`, `OTHER`). |
-| `GET` | `/api/accounts/:id` | Get account details. |
-| `PUT` | `/api/accounts/:id` | Update account name or type. |
-| `DELETE` | `/api/accounts/:id` | Safely delete account (blocked if transactions exist). |
-| `GET` | `/api/accounts/:id/transactions` | Fetch account-specific ledger with pagination. |
-
-### Categories (`/api/categories`)
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/categories` | List system categories and user-created custom categories. |
-| `POST` | `/api/categories` | Create custom category (`INCOME` or `EXPENSE`). |
-| `PUT` | `/api/categories/:id` | Rename custom category (system categories locked). |
-| `DELETE` | `/api/categories/:id` | Delete custom category (blocked if linked to transactions). |
-
-### Transactions (`/api/transactions`)
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/transactions` | Query ledger with filters (accountId, categoryId, type, search, date range, pagination). |
-| `POST` | `/api/transactions` | Record `INCOME` or `EXPENSE` and atomically adjust account balance. |
-| `POST` | `/api/transactions/transfer` | Execute double-entry transfer between two accounts. |
-| `GET` | `/api/transactions/:id` | Get transaction details. |
-| `PUT` | `/api/transactions/:id` | Update transaction amount or details with atomic balance adjustment. |
-| `DELETE` | `/api/transactions/:id` | Delete transaction with automatic atomic balance reversal. |
+### 3. Financial Analytics Engine
+- **Cash Flow Summary**: Total income, total expenses, net cash flow (`income - expenses`), and savings rate percentage. Transfers are strictly excluded.
+- **Category Breakdown**: Expense distribution by category with percentage share of total spending.
+- **Monthly Trends & Safe MoM**: Tracks income, expenses, and net savings across calendar months. Calculates Month-over-Month (MoM) percentage change safely handling zero or null previous denominators without returning `Infinity` or `NaN`.
+- **Currency-Safe Account Summaries**: Aggregates account reserves strictly by currency without cross-currency summing.
+- **Budget & Goal Summaries**: Aggregates health counts, total limits, and overall progress metrics.
 
 ---
 
-## Phase 2: Authentication & Security Module
+## API Endpoints Reference
 
-- **Password Security**: Validated using strict Zod rules (8+ chars, upper, lower, digit, symbol) and hashed with `bcryptjs` (salt rounds 12).
-- **1-Minute Email OTP Verification**: Cryptographically secure 6-digit OTPs (`crypto.randomInt`), stored as SHA-256 hashes with 1-minute expiration.
-- **JWT Access & Refresh Token Rotation**:
-  - Short-lived **15-minute Access Token**.
-  - Long-lived **7-day Refresh Token** delivered in an `HttpOnly`, `SameSite: Lax`, `Secure` cookie.
-  - **Token Reuse Detection**: Immediate invalidation of token family upon reuse.
-- **Forgot & Reset Password**: Generic non-enumerating responses, single-use scoped OTP, all active sessions revoked on reset.
-- **Role-Based Access Control (RBAC)**: Support for `USER` and `ADMIN` roles enforced via middleware.
+### Budgets (`/api/budgets`)
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/budgets?month=&year=` | List category budgets for selected month/year with spending & status. |
+| `POST` | `/api/budgets` | Create monthly category budget for an expense category. |
+| `GET` | `/api/budgets/:id` | Get individual budget details and utilization. |
+| `PUT` | `/api/budgets/:id` | Update budget amount. |
+| `DELETE` | `/api/budgets/:id` | Remove budget configuration. |
+
+### Savings Goals (`/api/goals`)
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/goals` | List all savings goals with progress and status. |
+| `POST` | `/api/goals` | Create a savings goal with target amount and date. |
+| `GET` | `/api/goals/:id` | Get individual goal details. |
+| `PUT` | `/api/goals/:id` | Update goal details or recorded savings amount. |
+| `DELETE` | `/api/goals/:id` | Delete savings goal. |
+
+### Analytics (`/api/analytics`)
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/analytics/summary` | Cash flow metrics (Income, Expenses, Net Flow, Savings Rate). |
+| `GET` | `/api/analytics/category-breakdown` | Expense spending grouped by category with percentages. |
+| `GET` | `/api/analytics/monthly-trends` | 6-month income vs expenses trends with safe MoM percentages. |
+| `GET` | `/api/analytics/account-balances` | Account reserves breakdown grouped strictly by currency. |
+| `GET` | `/api/analytics/budget-summary` | Aggregated monthly budget utilization and health counts. |
+| `GET` | `/api/analytics/goals-summary` | Aggregated savings goals progress and target metrics. |
 
 ---
 
 ## Running Automated Tests
 
-Run the complete 70-test integration suite:
+Run the complete 93-test integration suite:
 
 ```bash
-# Inside server/
+# Inside root or server/
 npm test
 ```
 
@@ -95,6 +93,7 @@ Or run individual test suites:
 ```bash
 npm run test:auth       # 37 Authentication & Security tests
 npm run test:financial  # 33 Accounts, Categories & Transactions tests
+npm run test:phase4     # 23 Budgets, Savings Goals & Analytics tests
 ```
 
 ---
@@ -115,9 +114,10 @@ npm run test:financial  # 33 Accounts, Categories & Transactions tests
 
 3. **Navigate to the Client**:
    - `http://localhost:5173/` - System Health & Diagnostic Overview
-   - `http://localhost:5173/login` - Secure Login
-   - `http://localhost:5173/register` - User Registration & OTP Flow
-   - `http://localhost:5173/dashboard` - Financial Dashboard & Profile Overview
-   - `http://localhost:5173/accounts` - Multi-Account Management (`BANK`, `CASH`, `WALLET`, `CREDIT_CARD`)
-   - `http://localhost:5173/categories` - Income & Expense Tag Classifier
-   - `http://localhost:5173/transactions` - Financial Ledger & Double-Entry Transfers
+   - `http://localhost:5173/login` - Secure Authentication
+   - `http://localhost:5173/dashboard` - Real-time Analytics Dashboard & Recharts Visualizations
+   - `http://localhost:5173/accounts` - Multi-Account Management
+   - `http://localhost:5173/categories` - Expense & Income Category Classifier
+   - `http://localhost:5173/transactions` - Filterable Ledger & Double-Entry Transfers
+   - `http://localhost:5173/budgets` - Monthly Category Budgets & Spending Guards
+   - `http://localhost:5173/goals` - Savings Goals & Monthly Target Recommendations

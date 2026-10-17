@@ -8,6 +8,8 @@ import {
   LayoutDashboard,
   LogOut,
   Activity,
+  PieChart,
+  Target,
 } from 'lucide-react';
 
 export const AppNavbar: React.FC = () => {
@@ -19,6 +21,8 @@ export const AppNavbar: React.FC = () => {
     { name: 'Accounts', path: '/accounts', icon: Wallet },
     { name: 'Categories', path: '/categories', icon: Tag },
     { name: 'Transactions', path: '/transactions', icon: ArrowLeftRight },
+    { name: 'Budgets', path: '/budgets', icon: PieChart },
+    { name: 'Savings Goals', path: '/goals', icon: Target },
   ];
 
   return (
@@ -36,7 +40,7 @@ export const AppNavbar: React.FC = () => {
                   AI Finance Manager
                 </span>
                 <span className="text-[10px] text-emerald-600 font-semibold tracking-wider uppercase">
-                  Phase 3: Financial Core
+                  Phase 4: Budgets & Analytics
                 </span>
               </div>
             </Link>

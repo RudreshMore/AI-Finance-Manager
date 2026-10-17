@@ -41,11 +41,6 @@ enum TransactionType {
   TRANSFER
 }
 
-enum BudgetPeriod {
-  MONTHLY
-  YEARLY
-}
-
 model User {
   id           String        @id @default(uuid())
   email        String        @unique @db.VarChar(255)
@@ -175,21 +170,21 @@ model Transaction {
 }
 
 model Budget {
-  id         String       @id @default(uuid())
+  id         String   @id @default(uuid())
   userId     String
   categoryId String
-  amount     Decimal      @db.Decimal(14, 2)
-  period     BudgetPeriod @default(MONTHLY)
-  startDate  DateTime     @db.Date
-  endDate    DateTime     @db.Date
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
+  amount     Decimal  @db.Decimal(14, 2)
+  month      Int      // 1-12
+  year       Int      // e.g. 2026
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   // Relationships
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
-  @@index([userId, startDate, endDate])
+  @@unique([userId, categoryId, month, year])
+  @@index([userId, year, month])
   @@index([categoryId])
   @@map("budgets")
 }
