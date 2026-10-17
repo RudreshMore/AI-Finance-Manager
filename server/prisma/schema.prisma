@@ -72,6 +72,7 @@ model OtpToken {
   userId    String
   otpHash   String    @db.VarChar(255)
   type      OtpType
+  attempts  Int       @default(0)
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
@@ -87,6 +88,7 @@ model RefreshToken {
   id        String    @id @default(uuid())
   userId    String
   tokenHash String    @db.VarChar(255)
+  family    String    @default(uuid()) @db.VarChar(255)
   expiresAt DateTime
   revokedAt DateTime?
   createdAt DateTime  @default(now())
@@ -95,6 +97,8 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([tokenHash])
+  @@index([family])
   @@map("refresh_tokens")
 }
 

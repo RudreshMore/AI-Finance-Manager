@@ -18,6 +18,37 @@ const envSchema = z.object({
     .default('development'),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
+
+  // JWT Configuration
+  JWT_ACCESS_SECRET: z
+    .string()
+    .default('dev_jwt_access_super_secret_key_at_least_32_characters_long'),
+  JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
+  JWT_REFRESH_SECRET: z
+    .string()
+    .default('dev_jwt_refresh_super_secret_key_at_least_32_characters_long'),
+  JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
+
+  // OTP Configuration (1 minute expiry per requirement)
+  OTP_EXPIRES_IN_SECONDS: z
+    .string()
+    .default('60')
+    .transform((val) => parseInt(val, 10))
+    .refine((val) => !isNaN(val) && val > 0, {
+      message: 'OTP_EXPIRES_IN_SECONDS must be a positive number',
+    }),
+
+  // Optional SMTP Configuration
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : 587)),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z
+    .string()
+    .default('"AI Finance Manager" <noreply@aifinancemanager.com>'),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
@@ -29,4 +60,3 @@ if (!parsedEnv.success) {
 }
 
 export const env = parsedEnv.data;
-
