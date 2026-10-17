@@ -5,6 +5,9 @@ import cookieParser from 'cookie-parser';
 import { env } from './config/env';
 import { prisma } from './config/db';
 import authRoutes from './routes/auth.routes';
+import accountRoutes from './routes/account.routes';
+import categoryRoutes from './routes/category.routes';
+import transactionRoutes from './routes/transaction.routes';
 import { ApiError } from './utils/ApiError';
 
 const app = express();
@@ -61,6 +64,9 @@ app.get('/api/health', async (_req: Request, res: Response) => {
 
 // Mount Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/accounts', accountRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/transactions', transactionRoutes);
 
 // 404 Handler
 app.use((_req: Request, res: Response) => {

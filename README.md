@@ -12,98 +12,90 @@ An enterprise-grade, full-stack personal finance management application with a s
 
 ---
 
-## Phase 2: Authentication, Security & Authorization Module
+## Implementation Roadmap & Current Status
 
-Phase 2 introduces production-grade security, identity verification, and role-based access control.
-
-### Security Highlights
-1. **Password Security**: Passwords are validated using strict Zod rules (8+ chars, upper, lower, digit, symbol) and hashed with `bcryptjs` (salt rounds 12). Password hashes are never returned in responses.
-2. **1-Minute Email OTP Verification**: Cryptographically secure 6-digit OTPs (`crypto.randomInt`), stored as SHA-256 hashes with 1-minute expiration. Previous active codes are invalidated on resend, and brute-force attempts are locked after 5 failures.
-3. **JWT Access & Refresh Token Rotation**:
-   - Short-lived **15-minute Access Token**.
-   - Long-lived **7-day Refresh Token** delivered in an `HttpOnly`, `SameSite: Lax`, `Secure` cookie.
-   - **Token Reuse Detection**: If a revoked refresh token is presented, the entire token family is immediately revoked, protecting against token theft (OWASP compliant).
-4. **Forgot & Reset Password**: Generic responses to prevent email enumeration. Successful password reset invalidates all existing sessions and refresh tokens across all devices.
-5. **Rate Limiting & Headers**: `express-rate-limit` prevents brute-force login and OTP spam; `helmet` enforces HTTP security headers.
-6. **Role-Based Access Control (RBAC)**: Support for `USER` and `ADMIN` roles enforced through declarative middleware (`requireAuth`, `requireRole([Role.ADMIN])`).
+- [x] **Phase 1: Foundation & Architecture Setup** (Database schema, Prisma singleton, health check diagnostic)
+- [x] **Phase 2: Authentication, Security & Authorization Module** (Registration, 1-min OTP, JWT rotation, password reset, RBAC)
+- [x] **Phase 3: Financial Core — Accounts, Categories & Transactions** (Multi-account ledger, default/custom tagging, atomic balance updates, double-entry transfers, overdraft protection)
+- [ ] **Phase 4: Budgets, Savings Goals & Financial Analytics**
+- [ ] **Phase 5: AI Financial Assistant**
 
 ---
 
-## API Endpoints
+## Phase 3: Financial Core Module
 
-| Method | Endpoint | Auth Required | Description |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/health` | None | Service status, uptime, and live MySQL ping latency. |
-| `POST` | `/api/auth/register` | None (Rate Limited) | Register a new user (`isVerified: false`), generate & email 1-min OTP. |
-| `POST` | `/api/auth/verify-otp` | None (Rate Limited) | Verify 6-digit code for `EMAIL_VERIFICATION` or `PASSWORD_RESET`. |
-| `POST` | `/api/auth/resend-otp` | None (Rate Limited) | Invalidate old codes and re-issue a fresh 1-min OTP. |
-| `POST` | `/api/auth/login` | None (Rate Limited) | Authenticate credentials; sets `refreshToken` in `HttpOnly` cookie and returns `accessToken`. |
-| `POST` | `/api/auth/refresh` | Cookie or Body | Rotates refresh token, detects reuse, and issues a new access token. |
-| `POST` | `/api/auth/logout` | Optional | Revokes refresh token in database and clears authentication cookies. |
-| `POST` | `/api/auth/forgot-password` | None (Rate Limited) | Sends password reset OTP. Generic non-enumerating response. |
-| `POST` | `/api/auth/reset-password` | None (Rate Limited) | Consumes reset OTP, sets new password, and terminates all active sessions. |
-| `GET` | `/api/auth/me` | Bearer or Cookie | Returns sanitized profile for currently authenticated user. |
-| `GET` | `/api/auth/admin-check` | ADMIN Role | RBAC test endpoint requiring `ADMIN` role (returns 403 for `USER`). |
+### Core Accounting & Integrity Principles
+1. **Decimal Precision**: Monetary values strictly stored as MySQL `DECIMAL(14, 2)` and manipulated with Prisma `Decimal` to eliminate binary floating-point rounding errors.
+2. **Indian Rupee (INR) Default**: Standard currency defaults to `INR` with currency formatting (`₹`).
+3. **Atomic Balance Updates**: Every income, expense, and transfer updates account balances within an isolated `prisma.$transaction`.
+4. **Double-Entry Transfers**: Inter-account fund transfers atomically deduct from the source account and credit the destination account, logging full transfer history.
+5. **Overdraft Protection**: Expense or transfer operations resulting in negative balances are rejected on regular accounts (`BANK`, `CASH`, `WALLET`, `SAVINGS`), while permitted on `CREDIT_CARD`.
+6. **Safe Deletion Locks**:
+   - Accounts with existing transactions cannot be deleted to maintain audit integrity.
+   - System categories are immutable; custom categories with linked transactions cannot be deleted.
+   - Deleting a transaction atomically reverses its financial impact on the account balance.
 
 ---
 
-## Environment Variables
+## Financial API Endpoints
 
-### Backend (`server/.env`)
-```env
-PORT=5000
-NODE_ENV=development
-CORS_ORIGIN=http://localhost:5173
+### Accounts (`/api/accounts`)
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/accounts` | List authenticated user's active accounts with balances. |
+| `POST` | `/api/accounts` | Create new account (`BANK`, `CASH`, `WALLET`, `CREDIT_CARD`, `SAVINGS`, `OTHER`). |
+| `GET` | `/api/accounts/:id` | Get account details. |
+| `PUT` | `/api/accounts/:id` | Update account name or type. |
+| `DELETE` | `/api/accounts/:id` | Safely delete account (blocked if transactions exist). |
+| `GET` | `/api/accounts/:id/transactions` | Fetch account-specific ledger with pagination. |
 
-# MySQL Connection String
-DATABASE_URL="mysql://root:YOUR_PASSWORD@localhost:3306/ai_finance_manager"
+### Categories (`/api/categories`)
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/categories` | List system categories and user-created custom categories. |
+| `POST` | `/api/categories` | Create custom category (`INCOME` or `EXPENSE`). |
+| `PUT` | `/api/categories/:id` | Rename custom category (system categories locked). |
+| `DELETE` | `/api/categories/:id` | Delete custom category (blocked if linked to transactions). |
 
-# JWT Secrets
-JWT_ACCESS_SECRET="your_super_secret_jwt_access_key_min_32_characters"
-JWT_ACCESS_EXPIRES_IN="15m"
-JWT_REFRESH_SECRET="your_super_secret_jwt_refresh_key_min_32_characters"
-JWT_REFRESH_EXPIRES_IN="7d"
+### Transactions (`/api/transactions`)
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/transactions` | Query ledger with filters (accountId, categoryId, type, search, date range, pagination). |
+| `POST` | `/api/transactions` | Record `INCOME` or `EXPENSE` and atomically adjust account balance. |
+| `POST` | `/api/transactions/transfer` | Execute double-entry transfer between two accounts. |
+| `GET` | `/api/transactions/:id` | Get transaction details. |
+| `PUT` | `/api/transactions/:id` | Update transaction amount or details with atomic balance adjustment. |
+| `DELETE` | `/api/transactions/:id` | Delete transaction with automatic atomic balance reversal. |
 
-# OTP Expiry (1 minute = 60s)
-OTP_EXPIRES_IN_SECONDS=60
+---
 
-# Optional SMTP Email Configuration (If omitted, fast simulated dev logger is used)
-SMTP_HOST=smtp.ethereal.email
-SMTP_PORT=587
-SMTP_USER=your_smtp_user
-SMTP_PASS=your_smtp_password
-SMTP_FROM="AI Finance Manager <noreply@aifinancemanager.com>"
-```
+## Phase 2: Authentication & Security Module
 
-### Frontend (`client/.env`)
-```env
-VITE_API_BASE_URL=http://localhost:5000/api
-```
+- **Password Security**: Validated using strict Zod rules (8+ chars, upper, lower, digit, symbol) and hashed with `bcryptjs` (salt rounds 12).
+- **1-Minute Email OTP Verification**: Cryptographically secure 6-digit OTPs (`crypto.randomInt`), stored as SHA-256 hashes with 1-minute expiration.
+- **JWT Access & Refresh Token Rotation**:
+  - Short-lived **15-minute Access Token**.
+  - Long-lived **7-day Refresh Token** delivered in an `HttpOnly`, `SameSite: Lax`, `Secure` cookie.
+  - **Token Reuse Detection**: Immediate invalidation of token family upon reuse.
+- **Forgot & Reset Password**: Generic non-enumerating responses, single-use scoped OTP, all active sessions revoked on reset.
+- **Role-Based Access Control (RBAC)**: Support for `USER` and `ADMIN` roles enforced via middleware.
 
 ---
 
 ## Running Automated Tests
 
-Run the complete 37-test authentication & security suite:
+Run the complete 70-test integration suite:
 
 ```bash
 # Inside server/
 npm test
 ```
 
-The test suite covers:
-- Registration validation and non-leakage of password hashes
-- Duplicate registration handling
-- Pre-verification login blocking (403)
-- 6-digit OTP verification and 1-minute expiration
-- OTP brute-force attempt lockout
-- OTP reuse rejection
-- Valid and invalid credentials login
-- `HttpOnly` cookie delivery
-- Bearer token authentication
-- Token refresh rotation and token reuse detection
-- Multi-device session revocation on password reset
-- RBAC validation: USER forbidden (403) vs ADMIN authorized (200)
+Or run individual test suites:
+```bash
+npm run test:auth       # 37 Authentication & Security tests
+npm run test:financial  # 33 Accounts, Categories & Transactions tests
+```
 
 ---
 
@@ -122,9 +114,10 @@ The test suite covers:
    Frontend runs on `http://localhost:5173`
 
 3. **Navigate to the Client**:
-   - `http://localhost:5173/` - System Health & Module Overview
-   - `http://localhost:5173/register` - User Registration
-   - `http://localhost:5173/verify-otp` - OTP Verification
+   - `http://localhost:5173/` - System Health & Diagnostic Overview
    - `http://localhost:5173/login` - Secure Login
-   - `http://localhost:5173/forgot-password` - Forgot Password
-   - `http://localhost:5173/dashboard` - Protected User Dashboard & RBAC Tester
+   - `http://localhost:5173/register` - User Registration & OTP Flow
+   - `http://localhost:5173/dashboard` - Financial Dashboard & Profile Overview
+   - `http://localhost:5173/accounts` - Multi-Account Management (`BANK`, `CASH`, `WALLET`, `CREDIT_CARD`)
+   - `http://localhost:5173/categories` - Income & Expense Tag Classifier
+   - `http://localhost:5173/transactions` - Financial Ledger & Double-Entry Transfers

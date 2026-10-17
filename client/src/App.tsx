@@ -8,6 +8,9 @@ import { LoginPage } from './pages/auth/LoginPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
+import { AccountsPage } from './pages/accounts/AccountsPage';
+import { CategoriesPage } from './pages/categories/CategoriesPage';
+import { TransactionsPage } from './pages/transactions/TransactionsPage';
 import { 
   checkBackendHealth, 
   type HealthResponse 
@@ -75,7 +78,7 @@ function HealthOverview() {
                 AI Finance Manager
               </h1>
               <p className="text-xs text-slate-500 font-medium">
-                Phase 2: Authentication & Security Module
+                Phase 3: Financial Core (Accounts, Categories, Transactions)
               </p>
             </div>
           </div>
@@ -337,7 +340,7 @@ function HealthOverview() {
 
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
-        AI Finance Manager &bull; Phase 2 Authentication & Security Verified &bull; Next: Phase 3 Financial Core
+        AI Finance Manager &bull; Phase 3: Financial Core Verified &bull; Next: Phase 4 Budgets & Goals
       </footer>
     </div>
   );
@@ -359,6 +362,30 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/accounts"
+            element={
+              <ProtectedRoute>
+                <AccountsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/categories"
+            element={
+              <ProtectedRoute>
+                <CategoriesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/transactions"
+            element={
+              <ProtectedRoute>
+                <TransactionsPage />
               </ProtectedRoute>
             }
           />

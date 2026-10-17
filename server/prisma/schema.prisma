@@ -24,7 +24,10 @@ enum AccountType {
   BANK
   CASH
   WALLET
+  CREDIT_CARD
+  SAVINGS
   INVESTMENT
+  OTHER
 }
 
 enum CategoryType {
@@ -108,7 +111,7 @@ model Account {
   name       String      @db.VarChar(100)
   type       AccountType @default(BANK)
   balance    Decimal     @default(0.00) @db.Decimal(14, 2)
-  currency   String      @default("USD") @db.VarChar(10)
+  currency   String      @default("INR") @db.VarChar(10)
   isArchived Boolean     @default(false)
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
@@ -153,18 +156,18 @@ model Transaction {
   categoryId           String?
   type                 TransactionType
   amount               Decimal         @db.Decimal(14, 2)
-  date                 DateTime
-  notes                String?         @db.Text
+  description          String?         @db.Text
+  transactionDate      DateTime        @default(now())
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt
 
   // Relationships
   user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  account            Account   @relation("SourceAccount", fields: [accountId], references: [id], onDelete: Cascade)
-  destinationAccount Account?  @relation("DestinationAccount", fields: [destinationAccountId], references: [id], onDelete: SetNull)
+  account            Account   @relation("SourceAccount", fields: [accountId], references: [id], onDelete: Restrict)
+  destinationAccount Account?  @relation("DestinationAccount", fields: [destinationAccountId], references: [id], onDelete: Restrict)
   category           Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
-  @@index([userId, date])
+  @@index([userId, transactionDate])
   @@index([accountId])
   @@index([destinationAccountId])
   @@index([categoryId])
