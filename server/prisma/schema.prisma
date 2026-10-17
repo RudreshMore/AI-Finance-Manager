@@ -1,0 +1,207 @@
+// Prisma Schema for AI Finance Manager
+// Provider: MySQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum OtpType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+enum AccountType {
+  BANK
+  CASH
+  WALLET
+  INVESTMENT
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+enum BudgetPeriod {
+  MONTHLY
+  YEARLY
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique @db.VarChar(255)
+  passwordHash String        @db.VarChar(255)
+  firstName    String        @db.VarChar(100)
+  lastName     String        @db.VarChar(100)
+  role         Role          @default(USER)
+  isVerified   Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relationships
+  otpTokens     OtpToken[]
+  refreshTokens RefreshToken[]
+  accounts      Account[]
+  categories    Category[]
+  transactions  Transaction[]
+  budgets       Budget[]
+  goals         Goal[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model OtpToken {
+  id        String    @id @default(uuid())
+  userId    String
+  otpHash   String    @db.VarChar(255)
+  type      OtpType
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  // Relationships
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@map("otp_tokens")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @db.VarChar(255)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  // Relationships
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Account {
+  id         String      @id @default(uuid())
+  userId     String
+  name       String      @db.VarChar(100)
+  type       AccountType @default(BANK)
+  balance    Decimal     @default(0.00) @db.Decimal(14, 2)
+  currency   String      @default("USD") @db.VarChar(10)
+  isArchived Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  // Relationships
+  user                    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions            Transaction[] @relation("SourceAccount")
+  destinationTransactions Transaction[] @relation("DestinationAccount")
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Category {
+  id        String       @id @default(uuid())
+  userId    String?
+  name      String       @db.VarChar(100)
+  icon      String?      @db.VarChar(50)
+  color     String?      @db.VarChar(30)
+  type      CategoryType
+  isSystem  Boolean      @default(false)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  // Relationships
+  user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@unique([userId, name, type])
+  @@index([userId])
+  @@index([isSystem])
+  @@map("categories")
+}
+
+model Transaction {
+  id                   String          @id @default(uuid())
+  userId               String
+  accountId            String
+  destinationAccountId String?
+  categoryId           String?
+  type                 TransactionType
+  amount               Decimal         @db.Decimal(14, 2)
+  date                 DateTime
+  notes                String?         @db.Text
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  // Relationships
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account            Account   @relation("SourceAccount", fields: [accountId], references: [id], onDelete: Cascade)
+  destinationAccount Account?  @relation("DestinationAccount", fields: [destinationAccountId], references: [id], onDelete: SetNull)
+  category           Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([userId, date])
+  @@index([accountId])
+  @@index([destinationAccountId])
+  @@index([categoryId])
+  @@map("transactions")
+}
+
+model Budget {
+  id         String       @id @default(uuid())
+  userId     String
+  categoryId String
+  amount     Decimal      @db.Decimal(14, 2)
+  period     BudgetPeriod @default(MONTHLY)
+  startDate  DateTime     @db.Date
+  endDate    DateTime     @db.Date
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  // Relationships
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startDate, endDate])
+  @@index([categoryId])
+  @@map("budgets")
+}
+
+model Goal {
+  id            String    @id @default(uuid())
+  userId        String
+  name          String    @db.VarChar(150)
+  targetAmount  Decimal   @db.Decimal(14, 2)
+  currentAmount Decimal   @default(0.00) @db.Decimal(14, 2)
+  targetDate    DateTime? @db.Date
+  isCompleted   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relationships
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("goals")
+}
+
