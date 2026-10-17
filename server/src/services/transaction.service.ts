@@ -45,11 +45,11 @@ export class TransactionService {
           throw ApiError.badRequest('Selected category must be an INCOME category');
         }
 
-        // Increment balance
+        // Increment balance atomically
         const updatedSource = await tx.account.update({
           where: { id: sourceAccount.id },
           data: {
-            balance: sourceAccount.balance.add(amount),
+            balance: { increment: amount },
           },
         });
 
@@ -103,11 +103,11 @@ export class TransactionService {
           );
         }
 
-        // Decrement balance
+        // Decrement balance atomically
         const updatedSource = await tx.account.update({
           where: { id: sourceAccount.id },
           data: {
-            balance: sourceAccount.balance.sub(amount),
+            balance: { decrement: amount },
           },
         });
 
@@ -169,11 +169,11 @@ export class TransactionService {
         const [updatedSource, updatedDestination] = await Promise.all([
           tx.account.update({
             where: { id: sourceAccount.id },
-            data: { balance: sourceAccount.balance.sub(amount) },
+            data: { balance: { decrement: amount } },
           }),
           tx.account.update({
             where: { id: destinationAccount.id },
-            data: { balance: destinationAccount.balance.add(amount) },
+            data: { balance: { increment: amount } },
           }),
         ]);
 
@@ -337,35 +337,35 @@ export class TransactionService {
       // If amount or balance impact has changed, reverse previous balance effect first
       if (!newAmount.equals(existing.amount)) {
         if (existing.type === TransactionType.INCOME) {
-          // Revert: subtract old amount, add new amount
+          // Revert: subtract old amount, add new amount atomically
           const netDiff = newAmount.sub(existing.amount);
           await tx.account.update({
             where: { id: existing.accountId },
-            data: { balance: existing.account.balance.add(netDiff) },
+            data: { balance: { increment: netDiff } },
           });
         } else if (existing.type === TransactionType.EXPENSE) {
-          // Revert: add old amount, subtract new amount
-          const netDiff = newAmount.sub(existing.amount); // if new is greater, netDiff is positive
-          const tentativeBalance = existing.account.balance.sub(netDiff);
+          // Revert: add old amount, subtract new amount atomically
+          const netDiff = newAmount.sub(existing.amount);
+          const currentAcc = await tx.account.findUniqueOrThrow({ where: { id: existing.accountId } });
 
           if (
-            existing.account.type !== 'CREDIT_CARD' &&
-            tentativeBalance.lessThan(0)
+            currentAcc.type !== 'CREDIT_CARD' &&
+            currentAcc.balance.sub(netDiff).lessThan(0)
           ) {
             throw ApiError.badRequest('Insufficient funds to increase expense amount');
           }
 
           await tx.account.update({
             where: { id: existing.accountId },
-            data: { balance: tentativeBalance },
+            data: { balance: { decrement: netDiff } },
           });
         } else if (existing.type === TransactionType.TRANSFER) {
           const netDiff = newAmount.sub(existing.amount);
-          const tentativeSourceBalance = existing.account.balance.sub(netDiff);
+          const currentSource = await tx.account.findUniqueOrThrow({ where: { id: existing.accountId } });
 
           if (
-            existing.account.type !== 'CREDIT_CARD' &&
-            tentativeSourceBalance.lessThan(0)
+            currentSource.type !== 'CREDIT_CARD' &&
+            currentSource.balance.sub(netDiff).lessThan(0)
           ) {
             throw ApiError.badRequest('Insufficient funds in source account for updated transfer');
           }
@@ -373,11 +373,11 @@ export class TransactionService {
           await Promise.all([
             tx.account.update({
               where: { id: existing.accountId },
-              data: { balance: tentativeSourceBalance },
+              data: { balance: { decrement: netDiff } },
             }),
             tx.account.update({
               where: { id: existing.destinationAccountId! },
-              data: { balance: existing.destinationAccount!.balance.add(netDiff) },
+              data: { balance: { increment: netDiff } },
             }),
           ]);
         }
@@ -416,29 +416,29 @@ export class TransactionService {
         throw ApiError.notFound('Transaction not found');
       }
 
-      // Reverse balance effect
+      // Reverse balance effect atomically
       if (existing.type === TransactionType.INCOME) {
         // Revert: subtract income
         await tx.account.update({
           where: { id: existing.accountId },
-          data: { balance: existing.account.balance.sub(existing.amount) },
+          data: { balance: { decrement: existing.amount } },
         });
       } else if (existing.type === TransactionType.EXPENSE) {
         // Revert: restore spent funds
         await tx.account.update({
           where: { id: existing.accountId },
-          data: { balance: existing.account.balance.add(existing.amount) },
+          data: { balance: { increment: existing.amount } },
         });
       } else if (existing.type === TransactionType.TRANSFER) {
         // Revert: refund source, debit destination
         await Promise.all([
           tx.account.update({
             where: { id: existing.accountId },
-            data: { balance: existing.account.balance.add(existing.amount) },
+            data: { balance: { increment: existing.amount } },
           }),
           tx.account.update({
             where: { id: existing.destinationAccountId! },
-            data: { balance: existing.destinationAccount!.balance.sub(existing.amount) },
+            data: { balance: { decrement: existing.amount } },
           }),
         ]);
       }

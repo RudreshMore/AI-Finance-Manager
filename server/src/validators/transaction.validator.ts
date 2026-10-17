@@ -3,12 +3,17 @@ import { TransactionType } from '@prisma/client';
 
 const amountValidation = z
   .union([z.number(), z.string()])
+  .refine(
+    (val) => {
+      const num = typeof val === 'string' ? parseFloat(val) : val;
+      return !isNaN(num) && num > 0 && num <= 999999999999.99;
+    },
+    {
+      message: 'Amount must be a valid positive number not exceeding 999,999,999,999.99',
+    }
+  )
   .transform((val) => {
     const num = typeof val === 'string' ? parseFloat(val) : val;
-    if (isNaN(num)) throw new Error('Amount must be a valid number');
-    if (num <= 0) throw new Error('Amount must be strictly greater than 0');
-    if (num > 999999999999.99) throw new Error('Amount exceeds maximum permissible limit');
-    // Normalize to 2 decimal places
     return Math.round(num * 100) / 100;
   });
 

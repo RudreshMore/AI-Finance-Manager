@@ -42,7 +42,7 @@ export const AppNavbar: React.FC = () => {
                   AI Finance Manager
                 </span>
                 <span className="text-[10px] text-emerald-600 font-semibold tracking-wider uppercase">
-                  Phase 5: AI Financial Assistant
+                  Phase 6: Production Ready
                 </span>
               </div>
             </Link>

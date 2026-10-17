@@ -10,6 +10,11 @@ interface SendOtpEmailOptions {
 
 class EmailService {
   private transporter: nodemailer.Transporter | null = null;
+  private devOtpCache = new Map<string, string>();
+
+  getDevOtp(email: string): string | undefined {
+    return this.devOtpCache.get(email.toLowerCase());
+  }
 
   private async getTransporter(): Promise<nodemailer.Transporter> {
     if (this.transporter) return this.transporter;
@@ -39,6 +44,7 @@ class EmailService {
   }
 
   async sendOtpEmail({ to, otp, type, userName }: SendOtpEmailOptions): Promise<void> {
+    this.devOtpCache.set(to.toLowerCase(), otp);
     const transporter = await this.getTransporter();
 
     const isVerification = type === 'EMAIL_VERIFICATION';

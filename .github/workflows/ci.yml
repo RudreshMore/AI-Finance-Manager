@@ -1,0 +1,140 @@
+name: CI / CD Pipeline
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build-and-lint:
+    name: Build & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Server Dependencies
+        run: npm --prefix server ci
+
+      - name: Generate Prisma Client & Validate Schema
+        run: |
+          npm --prefix server run prisma:generate
+          npm --prefix server run prisma:validate
+
+      - name: Compile Backend TypeScript
+        run: npm --prefix server run build
+
+      - name: Install Client Dependencies
+        run: npm --prefix client ci
+
+      - name: Compile & Build Frontend Bundle
+        run: npm --prefix client run build
+
+  backend-tests:
+    name: Backend Integration & Audit Tests
+    runs-on: ubuntu-latest
+    needs: build-and-lint
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_DATABASE: ai_finance_manager
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Server Dependencies
+        run: npm --prefix server ci
+
+      - name: Deploy Database Schema
+        env:
+          DATABASE_URL: mysql://root:rootpassword@127.0.0.1:3306/ai_finance_manager
+        run: npx --prefix server prisma db push
+
+      - name: Run Complete Automated Test Suite (174 Tests)
+        env:
+          PORT: 5000
+          NODE_ENV: test
+          DATABASE_URL: mysql://root:rootpassword@127.0.0.1:3306/ai_finance_manager
+          JWT_ACCESS_SECRET: test_jwt_access_secret_min_32_chars_long_ci_value
+          JWT_REFRESH_SECRET: test_jwt_refresh_secret_min_32_chars_long_ci_value
+          JWT_ACCESS_EXPIRES_IN: 15m
+          JWT_REFRESH_EXPIRES_IN: 7d
+          OTP_EXPIRES_IN_SECONDS: 60
+          CORS_ORIGIN: http://localhost:5173
+        run: npm --prefix server run test
+
+  e2e-tests:
+    name: Playwright End-to-End Tests
+    runs-on: ubuntu-latest
+    needs: build-and-lint
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_DATABASE: ai_finance_manager
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Root & App Dependencies
+        run: |
+          npm ci
+          npm --prefix server ci
+          npm --prefix client ci
+
+      - name: Deploy Database Schema
+        env:
+          DATABASE_URL: mysql://root:rootpassword@127.0.0.1:3306/ai_finance_manager
+        run: npx --prefix server prisma db push
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright 11 User Journeys
+        env:
+          PORT: 5000
+          NODE_ENV: test
+          DATABASE_URL: mysql://root:rootpassword@127.0.0.1:3306/ai_finance_manager
+          JWT_ACCESS_SECRET: test_jwt_access_secret_min_32_chars_long_ci_value
+          JWT_REFRESH_SECRET: test_jwt_refresh_secret_min_32_chars_long_ci_value
+          JWT_ACCESS_EXPIRES_IN: 15m
+          JWT_REFRESH_EXPIRES_IN: 7d
+          OTP_EXPIRES_IN_SECONDS: 60
+          CORS_ORIGIN: http://localhost:5173
+        run: npx playwright test
+
+      - name: Upload Test Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

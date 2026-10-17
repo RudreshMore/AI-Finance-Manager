@@ -1,11 +1,11 @@
 import rateLimit from 'express-rate-limit';
 import { env } from '../config/env';
 
-const isTest = env.NODE_ENV === 'test';
+const isProd = env.NODE_ENV === 'production';
 
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isTest ? 1000 : 15, // limit each IP to 15 requests per windowMs
+  max: isProd ? 15 : 1000, // limit each IP to 15 requests in production, 1000 in dev/test
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -16,7 +16,7 @@ export const authLimiter = rateLimit({
 
 export const otpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isTest ? 1000 : 10, // limit each IP to 10 OTP attempts per windowMs
+  max: isProd ? 10 : 1000, // limit each IP to 10 OTP attempts in production, 1000 in dev/test
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -27,7 +27,7 @@ export const otpLimiter = rateLimit({
 
 export const resendOtpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isTest ? 1000 : 5, // limit each IP to 5 resend requests per windowMs
+  max: isProd ? 5 : 1000, // limit each IP to 5 resend requests in production, 1000 in dev/test
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -38,7 +38,7 @@ export const resendOtpLimiter = rateLimit({
 
 export const aiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isTest ? 1000 : 30, // limit each IP/user to 30 requests per 15 mins
+  max: isProd ? 30 : 1000, // limit each IP/user to 30 requests in production, 1000 in dev/test
   standardHeaders: true,
   legacyHeaders: false,
   message: {

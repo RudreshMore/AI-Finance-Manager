@@ -13,6 +13,7 @@ import budgetRoutes from './routes/budget.routes';
 import goalRoutes from './routes/goal.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import aiRoutes from './routes/ai.routes';
+import testRoutes from './routes/test.routes';
 import { ApiError } from './utils/ApiError';
 
 const app = express();
@@ -76,6 +77,11 @@ app.use('/api/budgets', budgetRoutes);
 app.use('/api/goals', goalRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/ai', aiRoutes);
+
+// Dev / Test Helpers (strictly disabled in production)
+if (env.NODE_ENV !== 'production') {
+  app.use('/api/test', testRoutes);
+}
 
 // 404 Handler
 app.use((_req: Request, res: Response) => {

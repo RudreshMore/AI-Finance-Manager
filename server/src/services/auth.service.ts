@@ -514,7 +514,7 @@ export class AuthService {
   /**
    * Generates a new access token and refresh token pair, saving the refresh token in DB.
    */
-  private static async issueTokenPair(user: {
+  static async issueTokenPair(user: {
     id: string;
     email: string;
     role: Role;

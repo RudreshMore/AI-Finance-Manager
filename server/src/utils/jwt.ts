@@ -9,9 +9,9 @@ export interface TokenPayload {
   role: Role;
 }
 
-export const generateAccessToken = (payload: TokenPayload): string => {
+export const generateAccessToken = (payload: TokenPayload, customExpiresIn?: string | number): string => {
   const options: SignOptions = {
-    expiresIn: env.JWT_ACCESS_EXPIRES_IN as any,
+    expiresIn: (customExpiresIn !== undefined ? customExpiresIn : env.JWT_ACCESS_EXPIRES_IN) as any,
   };
   return jwt.sign(payload, env.JWT_ACCESS_SECRET, options);
 };

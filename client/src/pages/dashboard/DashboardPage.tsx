@@ -129,9 +129,9 @@ export const DashboardPage: React.FC = () => {
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 Live Financial Intelligence
               </div>
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
                 Welcome back, {user?.firstName}!
-              </h2>
+              </h1>
               <p className="mt-2 text-emerald-100/80 text-sm max-w-xl">
                 Comprehensive analytics engine powered by your active transactions, double-entry ledgers, category budgets, and savings goals.
               </p>
