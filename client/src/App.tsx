@@ -13,6 +13,7 @@ import { CategoriesPage } from './pages/categories/CategoriesPage';
 import { TransactionsPage } from './pages/transactions/TransactionsPage';
 import { BudgetsPage } from './pages/budgets/BudgetsPage';
 import { GoalsPage } from './pages/goals/GoalsPage';
+import { AiAssistantPage } from './pages/ai/AiAssistantPage';
 import { 
   checkBackendHealth, 
   type HealthResponse 
@@ -80,7 +81,7 @@ function HealthOverview() {
                 AI Finance Manager
               </h1>
               <p className="text-xs text-slate-500 font-medium">
-                Phase 3: Financial Core (Accounts, Categories, Transactions)
+                Phase 5: Secure AI Financial Assistant Integration
               </p>
             </div>
           </div>
@@ -404,6 +405,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <GoalsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ai-assistant"
+            element={
+              <ProtectedRoute>
+                <AiAssistantPage />
               </ProtectedRoute>
             }
           />

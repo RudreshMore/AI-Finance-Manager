@@ -10,6 +10,7 @@ import {
   Activity,
   PieChart,
   Target,
+  Sparkles,
 } from 'lucide-react';
 
 export const AppNavbar: React.FC = () => {
@@ -23,6 +24,7 @@ export const AppNavbar: React.FC = () => {
     { name: 'Transactions', path: '/transactions', icon: ArrowLeftRight },
     { name: 'Budgets', path: '/budgets', icon: PieChart },
     { name: 'Savings Goals', path: '/goals', icon: Target },
+    { name: 'AI Assistant', path: '/ai-assistant', icon: Sparkles },
   ];
 
   return (
@@ -40,7 +42,7 @@ export const AppNavbar: React.FC = () => {
                   AI Finance Manager
                 </span>
                 <span className="text-[10px] text-emerald-600 font-semibold tracking-wider uppercase">
-                  Phase 4: Budgets & Analytics
+                  Phase 5: AI Financial Assistant
                 </span>
               </div>
             </Link>

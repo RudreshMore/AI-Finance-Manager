@@ -18,7 +18,8 @@ An enterprise-grade, full-stack personal finance management application with a s
 - [x] **Phase 2: Authentication, Security & Authorization Module** (Registration, 1-min OTP, JWT rotation, password reset, RBAC)
 - [x] **Phase 3: Financial Core — Accounts, Categories & Transactions** (Multi-account ledger, default/custom tagging, atomic balance updates, double-entry transfers, overdraft protection)
 - [x] **Phase 4: Budgets, Savings Goals & Financial Analytics** (Category budgets, savings milestones, cash flow analytics, Recharts dashboard)
-- [ ] **Phase 5: AI Financial Assistant**
+- [x] **Phase 5: Secure AI Financial Assistant Integration** (Google Gemini integration, strictly read-only controlled tools, prompt injection protection, multi-turn chat, monthly financial insights)
+
 
 ---
 
@@ -77,12 +78,59 @@ An enterprise-grade, full-stack personal finance management application with a s
 | `GET` | `/api/analytics/account-balances` | Account reserves breakdown grouped strictly by currency. |
 | `GET` | `/api/analytics/budget-summary` | Aggregated monthly budget utilization and health counts. |
 | `GET` | `/api/analytics/goals-summary` | Aggregated savings goals progress and target metrics. |
+ 
+### AI Financial Assistant (`/api/ai`)
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/ai/status` | Check if Gemini AI engine is configured, model name, and provider. |
+| `POST` | `/api/ai/chat` | Interactive conversational financial assistant with multi-turn grounding and tools. |
+| `GET` | `/api/ai/monthly-summary?month=&year=` | Generates grounded monthly financial summary with metrics & actionable advice. |
+
+---
+
+## Phase 5: Secure AI Financial Assistant Integration
+
+### 1. Security Architecture & Read-Only Enforcement
+- **Controlled Tool Execution**:
+  ```
+  Authenticated User
+    ↓
+  AI Controller (JWT, Rate Limiting, Zod Request Validation)
+    ↓
+  AI Service
+    ↓
+  Controlled Read-Only Tools (userId derived strictly from session)
+    ↓
+  Backend Financial & Analytics Services
+    ↓
+  Prisma ORM & MySQL
+    ↓
+  Structured Data Grounding
+    ↓
+  Google Gemini LLM (gemini-2.5-flash via @google/genai)
+    ↓
+  Verified Response to Client
+  ```
+- **Zero Financial Mutation**: The AI has **zero** write/mutation tools. It cannot create, edit, or delete accounts, transactions, categories, budgets, or goals.
+- **Session-Derived User Identity**: The LLM and user can never supply a `userId`. All tool executions inject `req.user.id` from the verified JWT session.
+- **Zero Direct SQL**: The LLM has zero direct database or raw SQL execution permissions.
+- **Prompt Injection Defense**: Sanitizes user notes, strips control tags, and applies system directives forbidding role escapes or hallucinated balances.
+- **Graceful Unconfigured Fallback**: If `GEMINI_API_KEY` is not provided, endpoints return clear setup guidance without throwing 500 errors or interrupting the rest of the application.
+
+### 2. Controlled Read-Only Finance Tools
+1. `getFinancialSummary(period, startDate, endDate)`: Cash flow metrics (Income, Expenses, Net Savings, Savings Rate).
+2. `getCategorySpending(period, month, year)`: Category spending distribution with percentages.
+3. `compareMonthlySpending(monthA, yearA, monthB, yearB)`: Side-by-side comparison between two calendar months.
+4. `getAccountBalances()`: Active accounts and balances grouped by currency.
+5. `getBudgetStatus(month, year)`: Budget limits, actual expenses, utilization %, and health alerts.
+6. `getSavingsGoals()`: Savings targets, amounts saved, and deadline progress.
+7. `getRecentTransactions(limit, type, categoryId)`: Sanitized recent transaction records.
 
 ---
 
 ## Running Automated Tests
 
-Run the complete 93-test integration suite:
+Run the complete 149-test integration suite:
 
 ```bash
 # Inside root or server/
@@ -94,6 +142,7 @@ Or run individual test suites:
 npm run test:auth       # 37 Authentication & Security tests
 npm run test:financial  # 33 Accounts, Categories & Transactions tests
 npm run test:phase4     # 23 Budgets, Savings Goals & Analytics tests
+npm run test:phase5     # 56 AI Assistant Security, Tooling & Grounding tests
 ```
 
 ---
@@ -121,3 +170,5 @@ npm run test:phase4     # 23 Budgets, Savings Goals & Analytics tests
    - `http://localhost:5173/transactions` - Filterable Ledger & Double-Entry Transfers
    - `http://localhost:5173/budgets` - Monthly Category Budgets & Spending Guards
    - `http://localhost:5173/goals` - Savings Goals & Monthly Target Recommendations
+   - `http://localhost:5173/ai-assistant` - AI Financial Assistant (Chat & Monthly Insights)
+

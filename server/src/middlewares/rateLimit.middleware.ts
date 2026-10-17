@@ -35,3 +35,15 @@ export const resendOtpLimiter = rateLimit({
     message: 'Too many OTP resend requests. Please wait before requesting another code.',
   },
 });
+
+export const aiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isTest ? 1000 : 30, // limit each IP/user to 30 requests per 15 mins
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    status: 'error',
+    message: 'Too many AI Assistant requests. Please wait a few minutes before trying again.',
+  },
+});
+

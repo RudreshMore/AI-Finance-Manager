@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import { ZodError } from 'zod';
 import { env } from './config/env';
 import { prisma } from './config/db';
 import authRoutes from './routes/auth.routes';
@@ -11,6 +12,7 @@ import transactionRoutes from './routes/transaction.routes';
 import budgetRoutes from './routes/budget.routes';
 import goalRoutes from './routes/goal.routes';
 import analyticsRoutes from './routes/analytics.routes';
+import aiRoutes from './routes/ai.routes';
 import { ApiError } from './utils/ApiError';
 
 const app = express();
@@ -73,6 +75,7 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/budgets', budgetRoutes);
 app.use('/api/goals', goalRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/ai', aiRoutes);
 
 // 404 Handler
 app.use((_req: Request, res: Response) => {
@@ -89,6 +92,19 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
       status: 'error',
       message: err.message,
       ...(err.errors ? { errors: err.errors } : {}),
+    });
+  }
+
+  // Handle Zod validation errors
+  if (err instanceof ZodError) {
+    const formattedErrors = err.errors.map((e) => ({
+      field: e.path.join('.'),
+      message: e.message,
+    }));
+    return res.status(400).json({
+      status: 'error',
+      message: 'Validation failed',
+      errors: formattedErrors,
     });
   }
 

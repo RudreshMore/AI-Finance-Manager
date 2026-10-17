@@ -49,6 +49,10 @@ const envSchema = z.object({
   SMTP_FROM: z
     .string()
     .default('"AI Finance Manager" <noreply@aifinancemanager.com>'),
+
+  // Google Gemini AI Configuration
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
